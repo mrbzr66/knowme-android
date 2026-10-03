@@ -11,6 +11,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      HAS_SIGNING_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,7 +34,7 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
       - name: Configure stable release signing
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: env.HAS_SIGNING_KEY == 'true'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -64,14 +66,14 @@ jobs:
           p.write_text(s)
           PY
       - name: Build signed release APK
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: env.HAS_SIGNING_KEY == 'true'
         run: flutter build apk --release
       - name: Build debug APK (first-run smoke test only)
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 == '' }}
+        if: env.HAS_SIGNING_KEY != 'true'
         run: flutter build apk --debug
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'knowme-release-signed' || 'knowme-debug-smoke-test-not-for-updates' }}
+          name: ${{ env.HAS_SIGNING_KEY == 'true' && 'knowme-release-signed' || 'knowme-debug-smoke-test-not-for-updates' }}
           path: build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
